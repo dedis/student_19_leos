@@ -23,7 +23,8 @@ type Node struct {
 	Level int
 	ADist []float64
 	pDist []string
-	cluster []string
+	cluster map[string]bool
+	Bunch map[string]bool
 }
 
 // generate random coordinates for nodes
@@ -32,14 +33,15 @@ func genNodes(N int, SpaceMax int, K int) []Node{
 	for i := 0 ; i < N ; i++ {
 		nodes[i].X = RndSrc.Intn(SpaceMax)
 		//nodes[i].Y = RndSrc.Intn(SpaceMax)
-		nodes[i].Y = 0
+		nodes[i].Y = RndSrc.Intn(SpaceMax)
 		nodes[i].Name = strconv.Itoa(i)
 		nodes[i].ADist = make([]float64, K)
 		for j := 0 ; j < K ; j++ {
 			nodes[i].ADist[j] = math.MaxInt64
 		}
 		nodes[i].pDist = make([]string, K)
-		nodes[i].cluster = make([]string, 0)
+		nodes[i].cluster = make(map[string]bool, 0)
+		nodes[i].Bunch = make(map[string]bool, 0)
 	}
 
 
@@ -97,6 +99,14 @@ func computeADist(nodes []Node, K int) {
 	}
 }
 
+// This code assumes that each node can maintain an unlimited nr of links to other nodes:
+// we basically start with a full mesh as a graph. Because we start with a full mesh, when building a node's cluster with
+// Dijkstra, the node ends up maintaining direct links to all nodes in its cluster. Note that, in LEOs, each node has at most 5 direct links,
+// thus we probably need something smarter here.
+
+// Each node also maintains direct links to the nodes in its bunch. We most probably cannot get around this without relaxing the resulting
+// latency guarantees, so we need to see what impact it has on LEOs.
+
 func computeCluster(nodeIdx int, nodes []Node, K int) {
 	crtNode := &nodes[nodeIdx]
 
@@ -110,7 +120,8 @@ func computeCluster(nodeIdx int, nodes []Node, K int) {
 
 			dist := euclidianDist(*crtNode, nodes[i])
 			if targetLvl == K || dist < crtNode.ADist[targetLvl] {
-				crtNode.cluster = append(crtNode.cluster, nodes[i].Name)
+				crtNode.cluster[nodes[i].Name] = true
+				nodes[i].Bunch[crtNode.Name] = true
 			}
 		}
 	}
@@ -130,6 +141,51 @@ func alg(K int, nodes []Node) {
 	}
 }
 
+// This function only computes the distance between nodeU and nodeV but not the actual path.
+// The path should be easy to extract though.
+func compactDistance (nodeU Node, nodeV Node, K int, nodes []Node) float64 {
+	// same node check
+	if nodeU.Name == nodeV.Name {
+		return 0.0
+	}
+
+	w := nodeU
+	i := 0
+
+	for {
+		found := false
+
+		//log.LLvl1("w=", w.Name, "i=", i)
+
+		if nodeV.Bunch[w.Name] {
+			found = true
+			break
+		}
+
+		i++
+		if found {
+			break
+		}
+
+		if i == K {
+			log.Error("shouldn't get here!", nodeU.Name, nodeV.Name, nodeU.Bunch, nodeV.Bunch)
+		}
+		aux := nodeU
+		nodeU = nodeV
+		nodeV = aux
+
+		for _, n := range nodes {
+			if n.Name == nodeU.pDist[i] {
+				w = n
+				break
+			}
+		}
+	}
+
+	return euclidianDist(w,nodeU) + euclidianDist(w,nodeV)
+}
+
+
 func main() {
 
 	K := flag.Int("K", 3, "Number of levels.")
@@ -147,8 +203,28 @@ func main() {
 
 	for i := 0 ; i < *N ; i++ {
 		//log.Lvl1(nodes[i].X, nodes[i].Y, nodes[i].Level, nodes[i].ADist, nodes[i].pDist)
-		log.Lvl1(i, "<",nodes[i].X,",", nodes[i].Y, ">", "lvl=", nodes[i].Level, "cluster size=", len(nodes[i].cluster), nodes[i].cluster)
+		log.Lvl1(nodes[i].Name, "<",nodes[i].X,",", nodes[i].Y, ">", "lvl=", nodes[i].Level, "cluster = ", nodes[i].cluster, "bunch = ", nodes[i].Bunch)
 	}
-	
+
+	for i := 0 ; i < *N ; i++ {
+		for j := 0 ; j < *N ; j++ {
+			//log.Lvl1(nodes[i].X, nodes[i].Y, nodes[i].Level, nodes[i].ADist, nodes[i].pDist)
+			sanityCheckPasses := false
+			if euclidianDist(nodes[i], nodes[j]) * (2.0 * float64(*K) - 1.0) >= compactDistance(nodes[i], nodes[j], *K, nodes) {
+				sanityCheckPasses = true
+			}
+
+
+
+			log.Lvl1(nodes[i].Name, nodes[j].Name, "direct distance", euclidianDist(nodes[i], nodes[j]), "compact distance", compactDistance(nodes[i], nodes[j], *K, nodes), "sanity check passes", sanityCheckPasses)
+
+			if sanityCheckPasses == false {
+				// shouldn't happen!
+				break
+			}
+		}
+	}
+
 }
+
 
