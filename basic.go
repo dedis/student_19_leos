@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"fmt"
 )
 
 var RndSrc *rand.Rand
@@ -189,7 +190,7 @@ func compactDistance (nodeU Node, nodeV Node, K int, nodes []Node) float64 {
 func main() {
 
 	K := flag.Int("K", 3, "Number of levels.")
-	N := flag.Int("N", 135, "Number of validators.")
+	N := flag.Int("N", 6, "Number of validators.")
 	SpaceMax := flag.Int("SpaceMax", 150, "Coordinate space size.")
 
 	flag.Parse()
@@ -201,11 +202,35 @@ func main() {
 
 	alg(*K, nodes)
 
+	for i := 0 ; i < *N; i++ {
+		for j := i+1 ; j < *N ; j++ {
+			fmt.Println("triangle_graph.add_edge(", i, ",", j, ", weight=", euclidianDist(nodes[i], nodes[j]), ")")
+		}
+	}
+
+	lvl0 := make([]int,0)
+	lvl1 := make([]int,0)
+	lvl2 := make([]int,0)
+	for i := 0 ; i < *N ; i++ {
+		if nodes[i].Level ==  0  {
+			lvl0 = append(lvl0,i)
+		}
+		if nodes[i].Level ==  1  {
+			lvl1 = append(lvl1,i)
+		}
+		if nodes[i].Level ==  2  {
+			lvl2 = append(lvl2,i)
+		}
+	}
+
+	fmt.Println("a_list=[", lvl0, ",", lvl1, ",", lvl2, ",[]]")
+
+
 	for i := 0 ; i < *N ; i++ {
 		//log.Lvl1(nodes[i].X, nodes[i].Y, nodes[i].Level, nodes[i].ADist, nodes[i].pDist)
 		log.Lvl1(nodes[i].Name, "<",nodes[i].X,",", nodes[i].Y, ">", "lvl=", nodes[i].Level, "cluster = ", nodes[i].cluster, "bunch = ", nodes[i].Bunch)
 	}
-
+/*
 	for i := 0 ; i < *N ; i++ {
 		for j := 0 ; j < *N ; j++ {
 			//log.Lvl1(nodes[i].X, nodes[i].Y, nodes[i].Level, nodes[i].ADist, nodes[i].pDist)
@@ -224,7 +249,7 @@ func main() {
 			}
 		}
 	}
-
+*/
 }
 
 

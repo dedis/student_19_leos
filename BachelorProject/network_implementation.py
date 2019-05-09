@@ -12,6 +12,7 @@ import LeoSatellites as sat
 NUMBER_OF_NODES = 5
 NUMBER_OF_LEVELS = 3
 MAX_DISTANCE_BETWEEN_SATELLITES = sat.MAX_DISTANCE_BETWEEN_SATS #TODO : change it with max distance btw sats
+# TODO MAX_DISTANCE_BETWEEN_SATELLITES = sys.float_info.max #TODO : change it with max distance btw sats
 
 def create_full_mesh(number_of_nodes):
     created_graph = nx.Graph()
@@ -165,7 +166,6 @@ def bunches_sat_graph(graph, a_list):
     level = len(a_list)-1
     nodes = graph.nodes
 
-    dij_dist = []
     for node in nodes:
         distances_to_others = [MAX_DISTANCE_BETWEEN_SATELLITES for _ in nodes]
         distances_to_others[node] = 0
@@ -196,6 +196,13 @@ def bunches_sat_graph(graph, a_list):
             while graph.nodes[u]['level'] >= next_level:
                 distance_to_levels[next_level] = dist_u, u
                 next_level += 1
+
+            # TODO sanity check: graph.nodes[u]['level'] == next_level-1
+            # assert(graph.nodes[u]['level'] == next_level-1)
+
+            if graph.nodes[u]['level'] == next_level - 1:
+                assert(distance_to_levels[next_level][0]>=MAX_DISTANCE_BETWEEN_SATELLITES)
+
 
             if graph.nodes[u]['level'] >= next_level-1 and distance_to_levels[next_level][0]>=MAX_DISTANCE_BETWEEN_SATELLITES:
                 bunch.add(u)
@@ -236,13 +243,13 @@ def test_path_graph():
     links_graph.add_edge(2, 3, weight=6)
     print(links_graph.edges())
 
+    # levels
     a_list = [[0, 1, 2, 3], [1, 2, 3], [2, 3], [3], []]
     add_level_to_nodes(links_graph, a_list)
 
     for node in links_graph.nodes:
         print(node, 'has level ', links_graph.nodes[node]['level'])
 
-    add_level_to_nodes(links_graph, a_list)
     bunches_sat_graph(links_graph, a_list)
     for node in links_graph.nodes:
         print(node, ' has bunch ', links_graph.nodes[node]['bunch'])
@@ -262,6 +269,34 @@ def test_triangle_graph():
     for node in triangle_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
 
+def test_rnd_graph():
+    triangle_graph = nx.Graph()
+    triangle_graph.add_nodes_from([0, 1, 2, 3, 4, 5])
+    triangle_graph.add_edge(0, 1, weight=146.86047800548656)
+    triangle_graph.add_edge(0, 2, weight=122.18837915284743)
+    triangle_graph.add_edge(0, 3, weight=17)
+    triangle_graph.add_edge(0, 4, weight=10.63014581273465)
+    triangle_graph.add_edge(0, 5, weight=124.90796611905904)
+    triangle_graph.add_edge(1, 2, weight=77.3692445355388)
+    triangle_graph.add_edge(1, 3, weight=161.8919392681427)
+    triangle_graph.add_edge(1, 4, weight=136.4734406395618)
+    triangle_graph.add_edge(1, 5, weight=41.593268686170845)
+    triangle_graph.add_edge(2, 3, weight=131.24404748406687)
+    triangle_graph.add_edge(2, 4, weight=112.25417586887359)
+    triangle_graph.add_edge(2, 5, weight=98.08159868191383)
+    triangle_graph.add_edge(3, 4, weight=25.96150997149434)
+    triangle_graph.add_edge(3, 5, weight=141.4390328021229)
+    triangle_graph.add_edge(4, 5, weight=115.52056094046635)
+    a_list = [[0, 3, 5], [4], [1, 2], []]
+    add_level_to_nodes(triangle_graph, a_list)
+    bunches_sat_graph(triangle_graph, a_list)
+    nodes = triangle_graph.nodes
+    for node in triangle_graph:
+        print(node, ' has bunch ', nodes[node]['bunch'])
+    for node in triangle_graph:
+        print(node, ' has next levels ', nodes[node]['next_levels'])
+
+
 #This is a simulation of a small constellation. It has been constructed in LeoSatellites.py
 def test_small_sat_graph():
     # level == 3
@@ -275,7 +310,11 @@ def test_small_sat_graph():
     for node in small_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
 
-test_small_sat_graph()
+
+#test_path_graph()
+#test_triangle_graph()
+test_rnd_graph()
+#test_small_sat_graph()
 
 
 
