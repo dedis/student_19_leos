@@ -220,7 +220,6 @@ def create_small_sat_graph():
     positions[2][1] = first_angle / 2, second_angle
     positions[2][2] = first_angle, second_angle
     all_distances = distances(positions)
-    print(all_distances[0][0][2][1])
     graph = nx.Graph()
     graph.add_nodes_from(range(0, 8))
     for orbit1 in range(0 , 3):
@@ -232,6 +231,7 @@ def create_small_sat_graph():
                     if not graph.has_edge(first_node, second_node):
                         graph.add_edge(first_node, second_node, weight=all_distances[orbit1][sat1][orbit2][sat2])
     return graph
+
 
 
 

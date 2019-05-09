@@ -177,11 +177,11 @@ def bunches_sat_graph(graph, a_list):
         q_distances = {node: distance for node, distance in enumerate(distances_to_others)}
         del q_distances[node]
 
-        distance_to_levels = {lvl: MAX_DISTANCE_BETWEEN_SATELLITES for lvl in range(0, level+1)} #contains len(a_list) elements
+        distance_to_levels = {lvl: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for lvl in range(0, level+1)} #contains len(a_list) elements
 
         next_level = 0
         while len(a_list[next_level]) != 0 and graph.nodes[node]['level'] >= next_level:
-            distance_to_levels[next_level] = 0
+            distance_to_levels[next_level] = 0, node
             next_level += 1
 
 
@@ -194,10 +194,10 @@ def bunches_sat_graph(graph, a_list):
             u, dist_u = min(q_distances.items(), key=lambda x:x[1])
 
             while graph.nodes[u]['level'] >= next_level:
-                distance_to_levels[next_level] = dist_u
+                distance_to_levels[next_level] = dist_u, u
                 next_level += 1
 
-            if graph.nodes[u]['level'] >= next_level-1 and distance_to_levels[next_level]>=MAX_DISTANCE_BETWEEN_SATELLITES:
+            if graph.nodes[u]['level'] >= next_level-1 and distance_to_levels[next_level][0]>=MAX_DISTANCE_BETWEEN_SATELLITES:
                 bunch.add(u)
 
             del q_distances[u]
@@ -213,10 +213,13 @@ def bunches_sat_graph(graph, a_list):
         # a node adds all nodes at level max to its bunch
         bunch = list(bunch | set(a_list[next_level-1]))
 
-        graph.nodes[node]['bunch'] = bunch
-        dij_dist.append({node: distance for node, distance in enumerate(distances_to_others)})
+        #keeps track of all the useful distances
+        bunch = {node: distances_to_others[node] for node in bunch}
 
-    return dij_dist
+        graph.nodes[node]['bunch'] = bunch
+        graph.nodes[node]['next_levels'] = distance_to_levels
+
+    return
 
 
 #-----------------------------------------------------------------------------------------------------------------------
