@@ -2,8 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d46861eb-fda3-4b15-b699-cd1617387ea3" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/BachelorProject/LeoSatellites.py" beforeDir="false" afterPath="$PROJECT_DIR$/BachelorProject/LeoSatellites.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BachelorProject/geometry_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/BachelorProject/geometry_functions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/BachelorProject/network_implementation.py" beforeDir="false" afterPath="$PROJECT_DIR$/BachelorProject/network_implementation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BachelorProject/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/BachelorProject/test.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -12,16 +15,16 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-    <SUITE FILE_PATH="coverage/student_19_leos$network_implementation.coverage" NAME="network_implementation Coverage Results" MODIFIED="1557386975032" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/BachelorProject" />
-    <SUITE FILE_PATH="coverage/student_19_leos$LeoSatellites.coverage" NAME="LeoSatellites Coverage Results" MODIFIED="1557387302960" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/BachelorProject" />
+    <SUITE FILE_PATH="coverage/student_19_leos$network_implementation.coverage" NAME="network_implementation Coverage Results" MODIFIED="1557935426805" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/BachelorProject" />
+    <SUITE FILE_PATH="coverage/student_19_leos$LeoSatellites.coverage" NAME="LeoSatellites Coverage Results" MODIFIED="1557926113445" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/BachelorProject" />
   </component>
   <component name="FileEditorManager">
-    <leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/BachelorProject/LeoSatellites.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="377">
-              <caret line="234" lean-forward="true" selection-start-line="234" selection-end-line="234" />
+            <state relative-caret-position="3060">
+              <caret line="204" column="31" selection-start-line="204" selection-start-column="31" selection-end-line="204" selection-end-column="31" />
               <folding>
                 <element signature="e#0#12#0" expanded="true" />
               </folding>
@@ -32,10 +35,31 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/BachelorProject/network_implementation.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="338">
-              <caret line="219" column="41" selection-start-line="219" selection-start-column="41" selection-end-line="219" selection-end-column="41" />
+            <state relative-caret-position="304">
+              <caret line="253" lean-forward="true" selection-start-line="253" selection-end-line="253" />
               <folding>
                 <element signature="e#0#21#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/BachelorProject/test.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1425">
+              <caret line="95" column="10" selection-start-line="95" selection-start-column="10" selection-end-line="95" selection-end-column="10" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/BachelorProject/geometry_functions.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="450">
+              <caret line="31" column="48" selection-start-line="31" selection-start-column="48" selection-end-line="31" selection-end-column="48" />
+              <folding>
+                <element signature="e#0#11#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -47,6 +71,34 @@
     <findStrings>
       <find>dij_dist</find>
       <find>distance_to_levels</find>
+      <find>sys</find>
+      <find>distances</find>
+      <find>distances_to_other</find>
+      <find>distances_to_others</find>
+      <find>clusters</find>
+      <find>weigh</find>
+      <find>number_of_nodes</find>
+      <find>'next_levels'</find>
+      <find>add_level</find>
+      <find>bunches_sat_gra</find>
+      <find>1</find>
+      <find>[]</find>
+      <find>]</find>
+      <find>bunch</find>
+      <find>2312</find>
+      <find>MAX_DISTANCE_BETWEEN_SATS</find>
+      <find>MAX_DISTANCE_BETWEEN_SATE</find>
+      <find>weight</find>
+      <find>ALTITUDE</find>
+      <find>dist_u_v</find>
+      <find>print</find>
+      <find>8:</find>
+      <find>, 8:</find>
+      <find>9,</find>
+      <find>8,</find>
+      <find>14:</find>
+      <find>40:</find>
+      <find>bunch.add</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -55,6 +107,8 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
+        <option value="$PROJECT_DIR$/BachelorProject/test.py" />
+        <option value="$PROJECT_DIR$/BachelorProject/geometry_functions.py" />
         <option value="$PROJECT_DIR$/BachelorProject/LeoSatellites.py" />
         <option value="$PROJECT_DIR$/BachelorProject/network_implementation.py" />
       </list>
@@ -106,7 +160,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.LeoSatellites">
+  <component name="RunManager" selected="Python.network_implementation">
     <configuration name="LeoSatellites" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="student_19_leos" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -153,8 +207,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.LeoSatellites" />
         <item itemvalue="Python.network_implementation" />
+        <item itemvalue="Python.LeoSatellites" />
       </list>
     </recent_temporary>
   </component>
@@ -168,48 +222,82 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1557385360389</updated>
-      <workItem from="1557385367229" duration="2120000" />
+      <workItem from="1557385367229" duration="2367000" />
+      <workItem from="1557390412478" duration="1080000" />
+      <workItem from="1557393115992" duration="1136000" />
+      <workItem from="1557489799150" duration="9787000" />
+      <workItem from="1557649123850" duration="15807000" />
+      <workItem from="1557919323756" duration="9155000" />
+      <workItem from="1557932040386" duration="1449000" />
+      <workItem from="1557934651062" duration="1000" />
+      <workItem from="1557934661878" duration="903000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="2120000" />
+    <option name="totallyTimeSpent" value="41685000" />
+  </component>
+  <component name="TodoView">
+    <todo-panel id="selected-file">
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+    <todo-panel id="all">
+      <are-packages-shown value="true" />
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="23" width="1440" height="806" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info id="Favorites" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.24964234" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.16094421" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
-      <window_info anchor="bottom" id="Docker" show_stripe_button="false" />
-      <window_info anchor="bottom" id="Database Changes" />
-      <window_info anchor="bottom" id="Version Control" />
-      <window_info anchor="bottom" id="Python Console" />
-      <window_info anchor="bottom" id="Terminal" />
-      <window_info anchor="bottom" id="Event Log" side_tool="true" />
+      <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32913166" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.49928468" visible="true" weight="0.18907563" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.39915967" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
-      <window_info anchor="bottom" id="TODO" order="6" />
-      <window_info anchor="right" id="SciView" />
-      <window_info anchor="right" id="Database" />
+      <window_info anchor="bottom" id="TODO" order="6" weight="0.32913166" />
+      <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Version Control" order="8" />
+      <window_info anchor="bottom" id="Database Changes" order="9" />
+      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.5007153" side_tool="true" weight="0.28711486" />
+      <window_info anchor="bottom" id="Terminal" order="11" />
+      <window_info anchor="bottom" id="Python Console" order="12" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+      <window_info anchor="right" id="SciView" order="3" />
+      <window_info anchor="right" id="Database" order="4" />
     </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="1" />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/BachelorProject/test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1425">
+          <caret line="95" column="10" selection-start-line="95" selection-start-column="10" selection-end-line="95" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/BachelorProject/geometry_functions.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="450">
+          <caret line="31" column="48" selection-start-line="31" selection-start-column="48" selection-end-line="31" selection-end-column="48" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/BachelorProject/LeoSatellites.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="377">
-          <caret line="234" lean-forward="true" selection-start-line="234" selection-end-line="234" />
+        <state relative-caret-position="3060">
+          <caret line="204" column="31" selection-start-line="204" selection-start-column="31" selection-end-line="204" selection-end-column="31" />
           <folding>
             <element signature="e#0#12#0" expanded="true" />
           </folding>
@@ -218,8 +306,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/BachelorProject/network_implementation.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="338">
-          <caret line="219" column="41" selection-start-line="219" selection-start-column="41" selection-end-line="219" selection-end-column="41" />
+        <state relative-caret-position="304">
+          <caret line="253" lean-forward="true" selection-start-line="253" selection-end-line="253" />
           <folding>
             <element signature="e#0#21#0" expanded="true" />
           </folding>
