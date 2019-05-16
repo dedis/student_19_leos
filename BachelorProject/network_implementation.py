@@ -169,7 +169,16 @@ def bunches_sat_graph(graph, a_list):
     level = len(a_list)-1
     nodes = graph.nodes
 
+    #Calculate the level where a_list[level] is empty. One should never reach this level
+    max_level = 0
+    while len(a_list[max_level]) > 0:
+        max_level+=1
+
+    LAST_LEVEL_NODES = set(a_list[max_level-1])
+
     for node in nodes:
+        last_level_nodes = copy.deepcopy(LAST_LEVEL_NODES)
+
         distances_to_others = {node: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for node in nodes}
         distances_to_others[node] = 0, None
 
@@ -183,20 +192,19 @@ def bunches_sat_graph(graph, a_list):
         distance_to_levels = {lvl: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for lvl in range(0, level+1)} #contains len(a_list) elements
 
         next_level = 0
-        while len(a_list[next_level]) != 0 and graph.nodes[node]['level'] >= next_level:
+        while next_level < max_level and graph.nodes[node]['level'] >= next_level:
             distance_to_levels[next_level] = 0, node
             next_level += 1
 
         bunch = set()
         bunch.add(node)
-
-        while len(q_distances) > 0 and len(a_list[next_level]) > 0:
+        last_level_nodes.discard(node)
+        while (len(q_distances) > 0 and next_level < max_level) or len(last_level_nodes) > 0:
             u, dist_u = min(q_distances.items(), key=lambda x:x[1])
 
             while graph.nodes[u]['level'] >= next_level:
                 distance_to_levels[next_level] = dist_u, u
                 next_level += 1
-
 
             if graph.nodes[u]['level'] == next_level - 1:
                 assert(distance_to_levels[next_level][0]>=MAX_DISTANCE_BETWEEN_SATELLITES)
@@ -204,20 +212,20 @@ def bunches_sat_graph(graph, a_list):
             if graph.nodes[u]['level'] >= next_level-1:
                 bunch.add(u)
 
+            if u in last_level_nodes:
+                bunch.add(u)
+                last_level_nodes.discard(u)
+
             del q_distances[u]
             neighbors = list(graph.neighbors(u))
             u_neighbors = [node for node in neighbors if node in list(map(lambda x: x[0], q_distances.items()))]
 
             for v in u_neighbors:
                 alt = dist_u + graph[u][v]['weight']
-                #print(distances_to_others[v][0], alt)
                 if alt < distances_to_others[v][0]:
-                    #print('Im here', distances_to_others[v][0], alt)
                     distances_to_others[v] = alt, u
                     q_distances[v] = alt
 
-        # a node adds all nodes at level max to its bunch
-        bunch = list(bunch | set(a_list[next_level-1]))
 
         #keeps track of all the useful distances
         bunch = {node: distances_to_others[node] for node in bunch}
@@ -388,9 +396,12 @@ def test_small_sat_graph():
 
 def test_big_graph():
     graph, _ = sat.create_spaceX_graph()
-    a_list = [[range(0, 5999)], [range(0, 1200)], [range(0, 400)]]
+    print(graph.number_of_nodes())
+    a_list = [list(range(0, 1600)), list(range(0, 800)), list(range(0, 400)), []]
+    print(a_list)
     add_level_to_nodes(graph, a_list)
     bunches_sat_graph(graph, a_list)
+    print(graph.nodes[0]['bunch'])
 
 
 test_big_graph()
