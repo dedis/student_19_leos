@@ -165,6 +165,8 @@ def add_level_to_nodes(graph, a_list):
 #dictionnary{node_in_bunch: distance_to_node_in_bunch, previous_node_before_reaching_this_node}
 #Keeps track of the path to the next level following the same format
 
+#TODO : Use a heap
+#
 def bunches_sat_graph(graph, a_list):
     level = len(a_list)-1
     nodes = graph.nodes
@@ -182,6 +184,7 @@ def bunches_sat_graph(graph, a_list):
         distances_to_others = {node: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for node in nodes}
         distances_to_others[node] = 0, None
 
+        #TODO : transform node in neighbor (routing table)
         for neighbor in graph.neighbors(node):
             if neighbor != node:
                 distances_to_others[neighbor] = graph[node][neighbor]['weight'], node
@@ -232,7 +235,7 @@ def bunches_sat_graph(graph, a_list):
 
         graph.nodes[node]['bunch'] = bunch
         graph.nodes[node]['next_levels'] = distance_to_levels
-        print('for node', node, 'the bunch is ', bunch, '\ndistance_to_levels is ', distance_to_levels)
+        #print('for node', node, 'the bunch is ', bunch, '\ndistance_to_levels is ', distance_to_levels)
 
 
     return
@@ -248,6 +251,13 @@ def clusters_from_bunches(graph):
         cluster = {node2: nodes[node2]['bunch'][node1] for node2 in nodes if node1 in nodes[node2]['bunch'].keys()}
         nodes[node1]['cluster'] = cluster
 
+def clusters_from_bunches2(graph):
+    nodes = graph.nodes
+    clusters = {node: {} for node in nodes}
+    for node1 in nodes:
+        for node2 in nodes[node1]['bunch']:
+            clusters[node2][node1] = nodes[node1]['bunch'][node2]
+    return
 
 def dist_u_v(graph, u, v):
     w = u
@@ -382,26 +392,30 @@ def test_small_sat_graph():
     print(a_list)
     add_level_to_nodes(small_graph, a_list)
     bunches_sat_graph(small_graph, a_list)
-    #clusters_from_bunches(small_graph)
-    #routing_tables(small_graph)
+    clusters_from_bunches(small_graph)
+    routing_tables(small_graph)
     nodes = small_graph.nodes
     for node in small_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
-    #for node in small_graph:
-        #print(node, ' has cluster', nodes[node]['cluster'])
+    for node in small_graph:
+        print(node, ' has cluster', nodes[node]['cluster'])
     print(dist_u_v(small_graph, 0, 2))
-    #for node in small_graph:
-        #print(small_graph.nodes[node]['routing_table'])
+    for node in small_graph:
+        print(small_graph.nodes[node]['routing_table'])
 
 
 def test_big_graph():
     graph, _ = sat.create_spaceX_graph()
     print(graph.number_of_nodes())
-    a_list = [list(range(0, 1600)), list(range(0, 800)), list(range(0, 400)), []]
+    #a_list = [list(range(0, 1600)), list(range(0, 800)), list(range(0, 400)), []]
+    a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     print(a_list)
     add_level_to_nodes(graph, a_list)
     bunches_sat_graph(graph, a_list)
-    print(graph.nodes[0]['bunch'])
+    for node in graph.nodes:
+        for _, dist_and_node in graph.nodes[node]['bunch'].items():
+            dist1, _ = dist_and_node
+            assert(dist1>2*NUMBER_OF_LEVELS-1)
 
 
 test_big_graph()
@@ -451,6 +465,10 @@ def plot_dij_vs_compact():
         for node2 in range(0, number_of_nodes):
             dij_list.append(dist_dict[node2])
             compact_list.append(compact_dict[node2])
+
+
+
+plot_dij_vs_compact()
 
 
 
