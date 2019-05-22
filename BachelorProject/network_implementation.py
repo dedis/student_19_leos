@@ -6,12 +6,15 @@ import sys
 import numpy as np
 import copy
 import LeoSatellites as sat
+import pickle
+from bokeh.plotting import figure, output_file, show
 
 
 #This is the way to put labels in them
 NUMBER_OF_NODES = 5
 NUMBER_OF_LEVELS = 3
 MAX_DISTANCE_BETWEEN_SATELLITES = sys.float_info.max
+MAX_HOPS = sys.float_info.max
 # todo : see if this would be better sat.MAX_DISTANCE_BETWEEN_SAT
 
 def create_full_mesh(number_of_nodes):
@@ -165,9 +168,9 @@ def add_level_to_nodes(graph, a_list):
 #dictionnary{node_in_bunch: distance_to_node_in_bunch, previous_node_before_reaching_this_node}
 #Keeps track of the path to the next level following the same format
 
-#TODO : Use a heap
+#TODO : Try to use a heap
 #
-def bunches_sat_graph(graph, a_list):
+def bunches_and_clusters(graph, a_list):
     level = len(a_list)-1
     nodes = graph.nodes
 
@@ -177,22 +180,27 @@ def bunches_sat_graph(graph, a_list):
         max_level+=1
 
     LAST_LEVEL_NODES = set(a_list[max_level-1])
+    for node in nodes:
+        nodes[node]['bunch'] = {}
+        nodes[node]['cluster'] = {}
 
     for node in nodes:
         last_level_nodes = copy.deepcopy(LAST_LEVEL_NODES)
 
-        distances_to_others = {node: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for node in nodes}
-        distances_to_others[node] = 0, None
+        # this will contain : the distance to the other elements, the routing node.
+        # the last node before arrival and the length of the path to arrive there
+        distances_to_others = {node: (MAX_DISTANCE_BETWEEN_SATELLITES, None, None, MAX_HOPS) for node in nodes}
+        distances_to_others[node] = 0, node, node, 0
 
-        #TODO : transform node in neighbor (routing table)
         for neighbor in graph.neighbors(node):
             if neighbor != node:
-                distances_to_others[neighbor] = graph[node][neighbor]['weight'], node
+                distances_to_others[neighbor] = graph[node][neighbor]['weight'], neighbor, node, 1
 
         q_distances = {node: distance[0] for node, distance in distances_to_others.items()}
         del q_distances[node]
 
-        distance_to_levels = {lvl: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for lvl in range(0, level+1)} #contains len(a_list) elements
+        #this list constains : the distance to other levels and the last node to arrive there (todo: is the second param useful?)
+        distance_to_levels = {lvl: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for lvl in range(0, level+1)}
 
         next_level = 0
         while next_level < max_level and graph.nodes[node]['level'] >= next_level:
@@ -225,15 +233,19 @@ def bunches_sat_graph(graph, a_list):
 
             for v in u_neighbors:
                 alt = dist_u + graph[u][v]['weight']
-                if alt < distances_to_others[v][0]:
-                    distances_to_others[v] = alt, u
+                current_distance = distances_to_others[v][0]
+                if alt < current_distance:
+                    _, routing_node, _, hops_to_u, = distances_to_others[u]
+                    distances_to_others[v] = alt, routing_node, u, hops_to_u+1
                     q_distances[v] = alt
 
 
         #keeps track of all the useful distances
-        bunch = {node: distances_to_others[node] for node in bunch}
+        for node2 in bunch:
+            dist, next_node, last_node, hops = distances_to_others[node2]
+            graph.nodes[node]['bunch'][node2] = dist, next_node, hops
+            graph.nodes[node2]['cluster'][node] = dist, last_node, hops
 
-        graph.nodes[node]['bunch'] = bunch
         graph.nodes[node]['next_levels'] = distance_to_levels
         #print('for node', node, 'the bunch is ', bunch, '\ndistance_to_levels is ', distance_to_levels)
 
@@ -243,20 +255,14 @@ def bunches_sat_graph(graph, a_list):
 
 #Creates for each node a cluster on the following form:
 #dictionnary{node_in_cluster: distance_to_node_in_cluster, next_step_to_reach_this_node}
-#TODO : FIND ANOTHER WAY TO COMPUTE IT (or don't use it), it's really slow
-#TODO : Avoid exponential time...
+#TODO : Verify this work or drop clusters
 def clusters_from_bunches(graph):
     nodes = graph.nodes
+    for node in nodes :
+        nodes[node]['cluster'] = []
     for node1 in nodes:
-        cluster = {node2: nodes[node2]['bunch'][node1] for node2 in nodes if node1 in nodes[node2]['bunch'].keys()}
-        nodes[node1]['cluster'] = cluster
-
-def clusters_from_bunches2(graph):
-    nodes = graph.nodes
-    clusters = {node: {} for node in nodes}
-    for node1 in nodes:
-        for node2 in nodes[node1]['bunch']:
-            clusters[node2][node1] = nodes[node1]['bunch'][node2]
+        for node2, value in nodes[node1]['bunch'].items():
+            nodes[node2]['cluster'].append(node1)
     return
 
 def dist_u_v(graph, u, v):
@@ -269,33 +275,28 @@ def dist_u_v(graph, u, v):
 
     return graph.nodes[u]['bunch'][w][0] + graph.nodes[v]['bunch'][w][0]
 
+#TODO : add routing here
+def dist_with_routing(graph, u, v):
 
-#Creates the routing table for each node (containing distances and next hop to Pi_v and to the nodes in Cluster)
-def routing_tables(graph):
-    nodes = graph.nodes
-    for node1 in nodes:
-        #Adds the cluster to the routing tables
-        #TODO : Verify the next_hop computed here is the correct next_hope to follow
-        routing_table = nodes[node1]['cluster']
+    w = u
+    next_level = 0
+    while w not in set(graph.nodes[v]['bunch'].keys()):
+        next_level += 1
+        u, v = v, u
+        w = graph.nodes[u]['next_levels'][next_level][1]
 
-        #Get the distance and node to the next levels, then computes the path to arrive there
-        for _, dist_and_node in nodes[node1]['next_levels'].items():
-            dist, node2 = dist_and_node
-            if node2 != None:
-                next_node = None
-                after_node = node2
-                bunch_u = graph.nodes[node1]['bunch']
-                while after_node != node1:
-                    next_node = after_node
-                    after_node = bunch_u[after_node][1]
-                routing_table[node2] = (dist, next_node)
-        nodes[node1]['routing_table'] = routing_table
+    dist_u_w, _, hops_u_w = graph.nodes[u]['bunch'][w]
+    dist_v_w, _, hops_v_w = graph.nodes[v]['bunch'][w]
+
+    return dist_u_w + dist_v_w, _, hops_u_w + hops_v_w
+
+
 
 # NB : Constructs all the required parameters for the graph EXCEPT CLUSTERS AND ROUTING TABLES
 def initialize(graph):
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     add_level_to_nodes(graph, a_list)
-    bunches_sat_graph(graph, a_list)
+    bunches_and_clusters(graph, a_list)
 
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -318,20 +319,17 @@ def test_path_graph():
     for node in links_graph.nodes:
         print(node, 'has level ', links_graph.nodes[node]['level'])
 
-    bunches_sat_graph(links_graph, a_list)
-    clusters_from_bunches(links_graph)
+    bunches_and_clusters(links_graph, a_list)
     for node in links_graph.nodes:
         print(node, ' has bunch ', links_graph.nodes[node]['bunch'])
     for node in links_graph.nodes:
-        print(node, ' has cluster', links_graph.nodes[node]['cluster'])
-    for node in links_graph.nodes:
         print(node, ' has next levels ', links_graph.nodes[node]['next_levels'])
-    for node1 in links_graph.nodes:
-        for node2 in links_graph.nodes:
-            print('node ', node1, ' to node ', node2, ' : ', dist_u_v(links_graph, node1, node2))
-    routing_tables(links_graph)
-    for node in links_graph:
-        print(links_graph.nodes[node]['routing_table'])
+    for node in links_graph.nodes:
+        print(node, ' has cluster', links_graph.nodes[node]['cluster'])
+
+    '''for node1 in links_graph:
+        for node2 in links_graph:
+            print(node1, 'to', node2, dist_with_routing(links_graph, node1, node2))'''
 
 
 def test_triangle_graph():
@@ -344,7 +342,7 @@ def test_triangle_graph():
 
     a_list = [[0, 1, 2], [1, 2], [2], []]
     add_level_to_nodes(triangle_graph, a_list)
-    bunches_sat_graph(triangle_graph, a_list)
+    bunches_and_clusters(triangle_graph, a_list)
     nodes = triangle_graph.nodes
     for node in triangle_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
@@ -375,7 +373,7 @@ def test_rnd_graph():
     triangle_graph.add_edge(4, 5, weight=115.52056094046635)
     a_list = [[0, 3, 5], [4], [1, 2], []]
     add_level_to_nodes(triangle_graph, a_list)
-    bunches_sat_graph(triangle_graph, a_list)
+    bunches_and_clusters(triangle_graph, a_list)
     nodes = triangle_graph.nodes
     for node in triangle_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
@@ -391,9 +389,7 @@ def test_small_sat_graph():
     a_list = create_a_levels(small_graph, 3)
     print(a_list)
     add_level_to_nodes(small_graph, a_list)
-    bunches_sat_graph(small_graph, a_list)
-    clusters_from_bunches(small_graph)
-    routing_tables(small_graph)
+    bunches_and_clusters(small_graph, a_list)
     nodes = small_graph.nodes
     for node in small_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
@@ -411,14 +407,11 @@ def test_big_graph():
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     print(a_list)
     add_level_to_nodes(graph, a_list)
-    bunches_sat_graph(graph, a_list)
+    bunches_and_clusters(graph, a_list)
     for node in graph.nodes:
         for _, dist_and_node in graph.nodes[node]['bunch'].items():
             dist1, _ = dist_and_node
-            assert(dist1>2*NUMBER_OF_LEVELS-1)
 
-
-test_big_graph()
 
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -427,18 +420,19 @@ test_big_graph()
 def compact_rd(graph):
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     add_level_to_nodes(graph, a_list)
-    bunches_sat_graph(graph, a_list)
+    bunches_and_clusters(graph, a_list)
     nodes = graph.nodes
-    distances = {}
+    distances = []
     for node1 in nodes:
-        dist_for_node1 = {}
         for node2 in nodes:
-            dist_for_node1[node2] = dist_u_v(graph, node1, node2)
-        distances[node1] = dist_for_node1
+            distances.append(dist_u_v(graph, node1, node2))
+
     return distances
 
-def plot_dij_vs_compact():
-    sat_graph, distances_matrix = sat.create_small_sat_graph()
+
+#Computes all the datas needed and stores them into a pickle file
+def dij_vs_compact():
+    sat_graph, distances_matrix = sat.create_spaceX_graph()
     number_of_nodes = sat_graph.number_of_nodes()
 
     #Puts all the direct sight values into a single dimension list
@@ -449,26 +443,74 @@ def plot_dij_vs_compact():
                 for dim4 in dim3:
                     direct_list.append(dim4)
 
+
     dij_list = []
     dij_distance = dict(nx.all_pairs_dijkstra_path_length(sat_graph))
 
-    print(dij_distance[0])
+    compact_list = compact_rd(sat_graph)
 
-    compact_list = []
-    compact_distance = compact_rd(sat_graph)
-    print(compact_distance[0])
-
+    bound_list = []
 
     for node1 in range(0, number_of_nodes):
         dist_dict = dij_distance[node1]
-        compact_dict = compact_distance[node1]
         for node2 in range(0, number_of_nodes):
             dij_list.append(dist_dict[node2])
-            compact_list.append(compact_dict[node2])
+            bound_list.append((2*NUMBER_OF_LEVELS-1)*dist_dict[node2])
+
+    pickle_compact = open('compact_list.pickle', 'ab')
+    pickle.dump((direct_list, dij_list, compact_list, bound_list), pickle_compact)
+
+    print(direct_list)
+    print(dij_list)
+    print(compact_list)
+    print(bound_list)
+
+def plot_lines():
+    pickle_in = open('compact_list.pickle', "rb")
+    direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
+    print(bound_list)
+    # Draw point based on above x, y axis values.
+    plt.plot(direct_list, dij_list, 'bs', direct_list, compact_list, 'g^', direct_list, bound_list, 'r--')
+
+    # Set chart title.
+    plt.title("Distances for different routing algorithms")
+
+    # Set x, y label text.
+    plt.xlabel('Line of sight')
+    plt.ylabel('Bound - red \n Dijkstra dist - blue \n Compact dist - green')
+    plt.show()
+
+def plot_multiple():
+    pickle_in = open('compact_list.pickle', "rb")
+    direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
+
+    direct_list = direct_list[:1000]
+    dij_list = dij_list[:1000]
+    compact_list = compact_list[:1000]
+    bound_list = bound_list[:1000]
+
+    #direct_list = [1, 2, 3, 4, 5]
+    #compact_list = [6, 7, 2, 4, 5]
+
+    # output to static HTML file
+    output_file("line.html")
+
+    p = figure(plot_width=800, plot_height=800, title="Algorithms depending on the line of sight")
+
+    # add a circle renderer with a size, color, and alpha
+    p.circle(direct_list, dij_list, size=5, color="navy", alpha=0.5)
+    p.circle(direct_list, compact_list, size=5, color="orange", alpha=0.5)
+    p.circle(direct_list, bound_list, size=5, color="red", alpha=0.5)
+
+    # show the results
+    show(p)
 
 
 
-plot_dij_vs_compact()
+plot_multiple()
+
+
+
 
 
 

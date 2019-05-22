@@ -94,3 +94,21 @@ def bunches_sat_graph(graph, a_list):
         graph.nodes[node]['next_levels'] = distance_to_levels
 
     return
+
+
+TODO : add only the nodes we want
+def routing_tables(graph):
+    nodes = graph.nodes
+    for node1 in nodes:
+        routing_node_1 = {}
+        #First we add to the routing table all the elements in the cluster
+        for node2 in nodes[node1]['cluster']:
+            routing_node_1[node2] = dist_with_routing(graph, node1, node2)
+        #Then we add to it all the elements leading to the next level
+        for _, dist_and_node in nodes[node1]['next_levels'].items():
+            _, node2 = dist_and_node
+            if node2 is not None:
+                routing_node_1[node2] = nodes[node1]['bunch'][node2]
+        nodes[node1]['routing_table'] = routing_node_1
+
+
