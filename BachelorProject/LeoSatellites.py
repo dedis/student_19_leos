@@ -12,7 +12,7 @@ import geometry_functions as geom
 
 TCL_FILE_NAME = 'SpaceX_constellation1_1150km.tcl'
 
-EARTH_RADIUS = 6.4
+EARTH_RADIUS = 6371
 ALTITUDE = 1150
 MAX_DISTANCE_BETWEEN_SATS = 2*(ALTITUDE+EARTH_RADIUS)
 SATELLITES_PER_ORBIT = 50
@@ -123,6 +123,7 @@ def get_orbit_and_sat_number(node_number):
     return (int(orbit_number), sat_number)
 
 
+
 #input : distances between satellites in a constellation
 #output : nx graph with each vertex corresponding to a satellite and each edge corresponding to the distance between two satellites
 #Note : this does not select the five closest links
@@ -200,9 +201,16 @@ def create_spaceX_graph():
     spaceX_constellation = constellationFromSaVi()
     spaceX_positions = positionsAtTime(spaceX_constellation, OBSERVATION_DATE)
     all_distances = distances(spaceX_positions)
-    print(all_distances[0][0][0][1])
     graph = graph_five_links_from_constellation(all_distances)
-    print(graph[0][1])
+    return graph, all_distances
+
+
+def line_of_sight():
+    spaceX_constellation = constellationFromSaVi()
+    spaceX_positions = positionsAtTime(spaceX_constellation, OBSERVATION_DATE)
+    all_distances = distances(spaceX_positions)
+    full_mesh_graph = graph_full_mesh_from_constellation(all_distances)
+    return full_mesh_graph
 
 # 3 orbits and 3 satellites per orbit, distributed in a symetric way
 
@@ -230,8 +238,7 @@ def create_small_sat_graph():
                     second_node = 3*orbit2+sat2
                     if not graph.has_edge(first_node, second_node):
                         graph.add_edge(first_node, second_node, weight=all_distances[orbit1][sat1][orbit2][sat2])
-    return graph
-
+    return graph, all_distances
 
 
 

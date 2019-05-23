@@ -11,8 +11,8 @@ import LeoSatellites as sat
 #This is the way to put labels in them
 NUMBER_OF_NODES = 5
 NUMBER_OF_LEVELS = 3
-MAX_DISTANCE_BETWEEN_SATELLITES = sat.MAX_DISTANCE_BETWEEN_SATS #TODO : change it with max distance btw sats
-# TODO MAX_DISTANCE_BETWEEN_SATELLITES = sys.float_info.max #TODO : change it with max distance btw sats
+MAX_DISTANCE_BETWEEN_SATELLITES = sys.float_info.max
+# todo : see if this would be better sat.MAX_DISTANCE_BETWEEN_SAT
 
 def create_full_mesh(number_of_nodes):
     created_graph = nx.Graph()
@@ -161,73 +161,141 @@ def add_level_to_nodes(graph, a_list):
         for node in set:
             graph.nodes[node]['level'] = level
 
+#Creates for each node a bunch on the following form:
+#dictionnary{node_in_bunch: distance_to_node_in_bunch, previous_node_before_reaching_this_node}
+#Keeps track of the path to the next level following the same format
 
+#TODO : Use a heap
+#
 def bunches_sat_graph(graph, a_list):
     level = len(a_list)-1
     nodes = graph.nodes
 
-    for node in nodes:
-        distances_to_others = [MAX_DISTANCE_BETWEEN_SATELLITES for _ in nodes]
-        distances_to_others[node] = 0
+    #Calculate the level where a_list[level] is empty. One should never reach this level
+    max_level = 0
+    while len(a_list[max_level]) > 0:
+        max_level+=1
 
+    LAST_LEVEL_NODES = set(a_list[max_level-1])
+
+    for node in nodes:
+        last_level_nodes = copy.deepcopy(LAST_LEVEL_NODES)
+
+        distances_to_others = {node: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for node in nodes}
+        distances_to_others[node] = 0, None
+
+        #TODO : transform node in neighbor (routing table)
         for neighbor in graph.neighbors(node):
             if neighbor != node:
-                distances_to_others[neighbor] = graph[node][neighbor]['weight']
+                distances_to_others[neighbor] = graph[node][neighbor]['weight'], node
 
-        q_distances = {node: distance for node, distance in enumerate(distances_to_others)}
+        q_distances = {node: distance[0] for node, distance in distances_to_others.items()}
         del q_distances[node]
 
         distance_to_levels = {lvl: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for lvl in range(0, level+1)} #contains len(a_list) elements
 
         next_level = 0
-        while len(a_list[next_level]) != 0 and graph.nodes[node]['level'] >= next_level:
+        while next_level < max_level and graph.nodes[node]['level'] >= next_level:
             distance_to_levels[next_level] = 0, node
             next_level += 1
 
-
-        print(node, ' has distance to levels ', distance_to_levels)
-
         bunch = set()
         bunch.add(node)
-
-        while len(q_distances) > 0 and len(a_list[next_level]) > 0:
+        last_level_nodes.discard(node)
+        while (len(q_distances) > 0 and next_level < max_level) or len(last_level_nodes) > 0:
             u, dist_u = min(q_distances.items(), key=lambda x:x[1])
 
             while graph.nodes[u]['level'] >= next_level:
                 distance_to_levels[next_level] = dist_u, u
                 next_level += 1
 
-            # TODO sanity check: graph.nodes[u]['level'] == next_level-1
-            # assert(graph.nodes[u]['level'] == next_level-1)
-
             if graph.nodes[u]['level'] == next_level - 1:
                 assert(distance_to_levels[next_level][0]>=MAX_DISTANCE_BETWEEN_SATELLITES)
 
-
-            if graph.nodes[u]['level'] >= next_level-1 and distance_to_levels[next_level][0]>=MAX_DISTANCE_BETWEEN_SATELLITES:
+            if graph.nodes[u]['level'] >= next_level-1:
                 bunch.add(u)
+
+            if u in last_level_nodes:
+                bunch.add(u)
+                last_level_nodes.discard(u)
 
             del q_distances[u]
             neighbors = list(graph.neighbors(u))
             u_neighbors = [node for node in neighbors if node in list(map(lambda x: x[0], q_distances.items()))]
+
             for v in u_neighbors:
                 alt = dist_u + graph[u][v]['weight']
-
-                if alt < distances_to_others[v]:
-                    distances_to_others[v] = alt
+                if alt < distances_to_others[v][0]:
+                    distances_to_others[v] = alt, u
                     q_distances[v] = alt
 
-        # a node adds all nodes at level max to its bunch
-        bunch = list(bunch | set(a_list[next_level-1]))
 
         #keeps track of all the useful distances
         bunch = {node: distances_to_others[node] for node in bunch}
 
         graph.nodes[node]['bunch'] = bunch
         graph.nodes[node]['next_levels'] = distance_to_levels
+        #print('for node', node, 'the bunch is ', bunch, '\ndistance_to_levels is ', distance_to_levels)
+
 
     return
 
+
+#Creates for each node a cluster on the following form:
+#dictionnary{node_in_cluster: distance_to_node_in_cluster, next_step_to_reach_this_node}
+#TODO : FIND ANOTHER WAY TO COMPUTE IT (or don't use it), it's really slow
+#TODO : Avoid exponential time...
+def clusters_from_bunches(graph):
+    nodes = graph.nodes
+    for node1 in nodes:
+        cluster = {node2: nodes[node2]['bunch'][node1] for node2 in nodes if node1 in nodes[node2]['bunch'].keys()}
+        nodes[node1]['cluster'] = cluster
+
+def clusters_from_bunches2(graph):
+    nodes = graph.nodes
+    clusters = {node: {} for node in nodes}
+    for node1 in nodes:
+        for node2 in nodes[node1]['bunch']:
+            clusters[node2][node1] = nodes[node1]['bunch'][node2]
+    return
+
+def dist_u_v(graph, u, v):
+    w = u
+    next_level = 0
+    while w not in set(graph.nodes[v]['bunch'].keys()):
+        next_level += 1
+        u, v = v, u
+        w = graph.nodes[u]['next_levels'][next_level][1]
+
+    return graph.nodes[u]['bunch'][w][0] + graph.nodes[v]['bunch'][w][0]
+
+
+#Creates the routing table for each node (containing distances and next hop to Pi_v and to the nodes in Cluster)
+def routing_tables(graph):
+    nodes = graph.nodes
+    for node1 in nodes:
+        #Adds the cluster to the routing tables
+        #TODO : Verify the next_hop computed here is the correct next_hope to follow
+        routing_table = nodes[node1]['cluster']
+
+        #Get the distance and node to the next levels, then computes the path to arrive there
+        for _, dist_and_node in nodes[node1]['next_levels'].items():
+            dist, node2 = dist_and_node
+            if node2 != None:
+                next_node = None
+                after_node = node2
+                bunch_u = graph.nodes[node1]['bunch']
+                while after_node != node1:
+                    next_node = after_node
+                    after_node = bunch_u[after_node][1]
+                routing_table[node2] = (dist, next_node)
+        nodes[node1]['routing_table'] = routing_table
+
+# NB : Constructs all the required parameters for the graph EXCEPT CLUSTERS AND ROUTING TABLES
+def initialize(graph):
+    a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
+    add_level_to_nodes(graph, a_list)
+    bunches_sat_graph(graph, a_list)
 
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -251,8 +319,20 @@ def test_path_graph():
         print(node, 'has level ', links_graph.nodes[node]['level'])
 
     bunches_sat_graph(links_graph, a_list)
+    clusters_from_bunches(links_graph)
     for node in links_graph.nodes:
         print(node, ' has bunch ', links_graph.nodes[node]['bunch'])
+    for node in links_graph.nodes:
+        print(node, ' has cluster', links_graph.nodes[node]['cluster'])
+    for node in links_graph.nodes:
+        print(node, ' has next levels ', links_graph.nodes[node]['next_levels'])
+    for node1 in links_graph.nodes:
+        for node2 in links_graph.nodes:
+            print('node ', node1, ' to node ', node2, ' : ', dist_u_v(links_graph, node1, node2))
+    routing_tables(links_graph)
+    for node in links_graph:
+        print(links_graph.nodes[node]['routing_table'])
+
 
 def test_triangle_graph():
     #level == 3
@@ -268,6 +348,12 @@ def test_triangle_graph():
     nodes = triangle_graph.nodes
     for node in triangle_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
+    for node in triangle_graph:
+        print(node, 'has next level', nodes[node]['next_level'])
+    for node1 in triangle_graph.nodes:
+        for node2 in triangle_graph.nodes:
+            print('node ', node1, ' to node ', node2, ' : ', dist_u_v(triangle_graph, node1, node2))
+
 
 def test_rnd_graph():
     triangle_graph = nx.Graph()
@@ -300,21 +386,91 @@ def test_rnd_graph():
 #This is a simulation of a small constellation. It has been constructed in LeoSatellites.py
 def test_small_sat_graph():
     # level == 3
-    small_graph = sat.create_small_sat_graph()
+    small_graph, _ = sat.create_small_sat_graph()
     print(small_graph.edges(data=True))
     a_list = create_a_levels(small_graph, 3)
     print(a_list)
     add_level_to_nodes(small_graph, a_list)
     bunches_sat_graph(small_graph, a_list)
+    clusters_from_bunches(small_graph)
+    routing_tables(small_graph)
     nodes = small_graph.nodes
     for node in small_graph:
         print(node, ' has bunch ', nodes[node]['bunch'])
+    for node in small_graph:
+        print(node, ' has cluster', nodes[node]['cluster'])
+    print(dist_u_v(small_graph, 0, 2))
+    for node in small_graph:
+        print(small_graph.nodes[node]['routing_table'])
 
 
-#test_path_graph()
-#test_triangle_graph()
-test_rnd_graph()
-#test_small_sat_graph()
+def test_big_graph():
+    graph, _ = sat.create_spaceX_graph()
+    print(graph.number_of_nodes())
+    #a_list = [list(range(0, 1600)), list(range(0, 800)), list(range(0, 400)), []]
+    a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
+    print(a_list)
+    add_level_to_nodes(graph, a_list)
+    bunches_sat_graph(graph, a_list)
+    for node in graph.nodes:
+        for _, dist_and_node in graph.nodes[node]['bunch'].items():
+            dist1, _ = dist_and_node
+            assert(dist1>2*NUMBER_OF_LEVELS-1)
+
+
+test_big_graph()
+
+
+#-----------------------------------------------------------------------------------------------------------------------
+# True computations happens here
+
+def compact_rd(graph):
+    a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
+    add_level_to_nodes(graph, a_list)
+    bunches_sat_graph(graph, a_list)
+    nodes = graph.nodes
+    distances = {}
+    for node1 in nodes:
+        dist_for_node1 = {}
+        for node2 in nodes:
+            dist_for_node1[node2] = dist_u_v(graph, node1, node2)
+        distances[node1] = dist_for_node1
+    return distances
+
+def plot_dij_vs_compact():
+    sat_graph, distances_matrix = sat.create_small_sat_graph()
+    number_of_nodes = sat_graph.number_of_nodes()
+
+    #Puts all the direct sight values into a single dimension list
+    direct_list = []
+    for dim1 in distances_matrix:
+        for dim2 in dim1:
+            for dim3 in dim2:
+                for dim4 in dim3:
+                    direct_list.append(dim4)
+
+    dij_list = []
+    dij_distance = dict(nx.all_pairs_dijkstra_path_length(sat_graph))
+
+    print(dij_distance[0])
+
+    compact_list = []
+    compact_distance = compact_rd(sat_graph)
+    print(compact_distance[0])
+
+
+    for node1 in range(0, number_of_nodes):
+        dist_dict = dij_distance[node1]
+        compact_dict = compact_distance[node1]
+        for node2 in range(0, number_of_nodes):
+            dij_list.append(dist_dict[node2])
+            compact_list.append(compact_dict[node2])
+
+
+
+plot_dij_vs_compact()
+
+
 
 
 

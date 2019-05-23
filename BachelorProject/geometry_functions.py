@@ -30,7 +30,6 @@ def haversine(positions1, positions2, altitude):
 SECONDS_IN_DAY = 86400
 #Input : semi_major_axis_length in km
 #Output : mean_motion in revolutions/day (float)
-#TODO : test it
 def semi_major_to_mean_motion(axis_length):
     return SECONDS_IN_DAY*math.sqrt(const.G.value*(const.M_earth.value)/math.pow(axis_length*1000,3))/(2*math.pi)
 
