@@ -8,10 +8,14 @@ import copy
 import LeoSatellites as sat
 import pickle
 from bokeh.plotting import figure, output_file, show
+from heapq import heappush, heappop
+from operator import itemgetter
+
+import cProfile
 
 
 #This is the way to put labels in them
-NUMBER_OF_NODES = 5
+NUMBER_OF_NODES = sat.SATELLITES_PER_ORBIT * sat.NUMBER_OF_ORBITS
 NUMBER_OF_LEVELS = 3
 MAX_DISTANCE_BETWEEN_SATELLITES = sys.float_info.max
 MAX_HOPS = sys.float_info.max
@@ -68,94 +72,6 @@ def create_a_levels(graph, k):
 
     return a_list
 
-# USED PREVIOUSLY FOR FULL MESH GRAPHS ------------------------------------------------------------------------------------------------------
-def dist_Ai_v_and_pi_v(graph, a_list):
-    nodes = graph.nodes
-    dist_v_a = list() # this is a matrix with vertices as lines and a_i as columns
-    p_v_list = list() # this is a matrix with vertices as lines and pi(v) as columns, corresponding to shortest path to a_i
-    for node1 in nodes:
-        dist_node1_a_i = [0]
-        p_node1_list = [node1]
-        for a_i in a_list[1:]:
-            min_dist = sys.float_info.max
-            closest_node = None
-            for node2 in a_i:
-                if node1 == node2:
-                    min_dist = 0
-                    closest_node = node2
-                elif graph[node1][node2]['weight'] < min_dist:
-                    min_dist = graph[node1][node2]['weight']
-                    closest_node = node2
-            dist_node1_a_i.append(min_dist)
-            p_node1_list.append(closest_node)
-        dist_v_a.append(dist_node1_a_i)
-        p_v_list.append(p_node1_list)
-
-    return dist_v_a, p_v_list
-
-def create_bunches(graph, a_list, dist_v_a):
-    levels = len(a_list)
-    nodes = graph.nodes()
-    b_v_list = list()
-    for crit_node in nodes:
-        b_v_i = list()
-        for i in range (0, levels):
-            difference_set = [node for node in a_list[i] if node not in a_list[i+1]]
-            for node2 in difference_set:
-                if crit_node == node2 or graph[crit_node][node2]['weight'] < dist_v_a[crit_node][i+1]:
-                    b_v_i.append(node2)
-        b_v_list.append(b_v_i)
-    return b_v_list
-
-
-def dist(node1, node2, bunches, p_v_list, graph):
-    if node1 < 0 or node1 >= NUMBER_OF_NODES or node2 < 0 or node2 >= NUMBER_OF_NODES:
-        raise Exception("One of the nodes is out of bounds")
-
-    next_node = node1
-    i = 0
-    path = []
-    while next_node not in bunches[node2]:
-        i = i+1
-        (node1, node2) = (node2, node1)
-        next_node = p_v_list[node1][i]
-
-    if next_node != node1 and next_node != node2:
-        path.append(next_node)
-
-    if next_node == node1:
-        dist_next_node_node1 = 0
-    else:
-        print('next_node : ', next_node, 'node1 :', node1)
-        dist_next_node_node1 = graph[next_node][node1]['weight']
-
-    if next_node == node2:
-        dist_next_node_node2 = 0
-    else:
-        dist_next_node_node2 = graph[next_node][node2]['weight']
-
-    path.reverse()
-
-    return dist_next_node_node1 + dist_next_node_node2, path
-
-
-
-def main_full_mesh():
-    small_graph=create_full_mesh(NUMBER_OF_NODES)
-    a_list = create_a_levels(small_graph, NUMBER_OF_LEVELS)
-    (dist_v_a, p_v_list) = dist_Ai_v_and_pi_v(small_graph, a_list)
-    print(a_list)
-    print(dist_v_a)
-    print(p_v_list)
-    bunches = create_bunches(small_graph, a_list, dist_v_a)
-    print(bunches)
-    (distance, path) = dist(0, 5, bunches, p_v_list, small_graph)
-    print(distance, " ", path)
-
-#
-
-#-----------------------------------------------------------------------------------------------------------------------
-
 # USED FOR SATELLITE GRAPHS ------------------------------------------------------------------------------------------------------
 
 
@@ -164,12 +80,10 @@ def add_level_to_nodes(graph, a_list):
         for node in set:
             graph.nodes[node]['level'] = level
 
+
 #Creates for each node a bunch on the following form:
 #dictionnary{node_in_bunch: distance_to_node_in_bunch, previous_node_before_reaching_this_node}
 #Keeps track of the path to the next level following the same format
-
-#TODO : Try to use a heap
-#
 def bunches_and_clusters(graph, a_list):
     level = len(a_list)-1
     nodes = graph.nodes
@@ -185,7 +99,14 @@ def bunches_and_clusters(graph, a_list):
         nodes[node]['cluster'] = {}
 
     for node in nodes:
+        #print(node)
         last_level_nodes = copy.deepcopy(LAST_LEVEL_NODES)
+
+        #used to extract the closest node in heap
+        heap_distances = []
+
+        #keeps track of already explored nodes
+        explored_nodes = set()
 
         # this will contain : the distance to the other elements, the routing node.
         # the last node before arrival and the length of the path to arrive there
@@ -194,12 +115,12 @@ def bunches_and_clusters(graph, a_list):
 
         for neighbor in graph.neighbors(node):
             if neighbor != node:
-                distances_to_others[neighbor] = graph[node][neighbor]['weight'], neighbor, node, 1
+                weight = graph[node][neighbor]['weight']
+                distances_to_others[neighbor] = weight, neighbor, node, 1
+                heappush(heap_distances, (weight, neighbor))
+        explored_nodes.add(node)
 
-        q_distances = {node: distance[0] for node, distance in distances_to_others.items()}
-        del q_distances[node]
-
-        #this list constains : the distance to other levels and the last node to arrive there (todo: is the second param useful?)
+        #this list constains : the distance to other levels and the last node to arrive there
         distance_to_levels = {lvl: (MAX_DISTANCE_BETWEEN_SATELLITES, None) for lvl in range(0, level+1)}
 
         next_level = 0
@@ -210,8 +131,9 @@ def bunches_and_clusters(graph, a_list):
         bunch = set()
         bunch.add(node)
         last_level_nodes.discard(node)
-        while (len(q_distances) > 0 and next_level < max_level) or len(last_level_nodes) > 0:
-            u, dist_u = min(q_distances.items(), key=lambda x:x[1])
+        while (len(heap_distances) > 0 and next_level < max_level) or len(last_level_nodes) > 0:
+            dist_u, u = heappop(heap_distances)
+            explored_nodes.add(u)
 
             while graph.nodes[u]['level'] >= next_level:
                 distance_to_levels[next_level] = dist_u, u
@@ -227,9 +149,9 @@ def bunches_and_clusters(graph, a_list):
                 bunch.add(u)
                 last_level_nodes.discard(u)
 
-            del q_distances[u]
+
             neighbors = list(graph.neighbors(u))
-            u_neighbors = [node for node in neighbors if node in list(map(lambda x: x[0], q_distances.items()))]
+            u_neighbors = [node for node in neighbors if node not in explored_nodes]
 
             for v in u_neighbors:
                 alt = dist_u + graph[u][v]['weight']
@@ -237,7 +159,7 @@ def bunches_and_clusters(graph, a_list):
                 if alt < current_distance:
                     _, routing_node, _, hops_to_u, = distances_to_others[u]
                     distances_to_others[v] = alt, routing_node, u, hops_to_u+1
-                    q_distances[v] = alt
+                    heappush(heap_distances, (alt, v))
 
 
         #keeps track of all the useful distances
@@ -331,7 +253,9 @@ def test_path_graph():
         for node2 in links_graph:
             print(node1, 'to', node2, dist_with_routing(links_graph, node1, node2))'''
 
+#test_path_graph()
 
+#test_path_graph()
 def test_triangle_graph():
     #level == 3
     triangle_graph = nx.Graph()
@@ -420,6 +344,7 @@ def test_big_graph():
 def compact_rd(graph):
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     add_level_to_nodes(graph, a_list)
+
     bunches_and_clusters(graph, a_list)
     nodes = graph.nodes
     distances = []
@@ -430,7 +355,61 @@ def compact_rd(graph):
     return distances
 
 
-#Computes all the datas needed and stores them into a pickle file
+
+
+#-----------------------------------------------------------------------------------------------------------------------
+#computes the difference between the routing table of compact routing and the one of djikstra
+def compact_table_size():
+    graph, distances_matrix = sat.create_spaceX_graph()
+    a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
+    add_level_to_nodes(graph, a_list)
+    bunches_and_clusters(graph, a_list)
+    routing_table_size = 0
+
+    nodes = graph.nodes
+    for node in nodes:
+        routing_table_size += len(nodes[node]['bunch']) + len(nodes[node]['cluster'])
+
+    return routing_table_size
+
+def routing_table_comparison():
+    number_of_comparisons = 20
+    compact_routing_table = []
+    for i in range(0, number_of_comparisons):
+        compact_routing_table.append(compact_table_size())
+
+    pickle_out = open('routing_table_size.pickle', 'wb')
+    pickle.dump(compact_routing_table, pickle_out)
+
+def plot_routing_tables(number_of_nodes):
+    pickle_in = open('routing_table_size.pickle', "rb")
+    compact_routing_table = pickle.load(pickle_in)
+    indexes_list = [i+1 for i, _ in enumerate(compact_routing_table)]
+    dij_size = number_of_nodes*number_of_nodes
+    dij_size_list = [dij_size for _ in indexes_list]
+
+    print(compact_routing_table)
+
+    # output to static HTML file
+    output_file("line.html")
+
+    p = figure(plot_width=800, plot_height=800, y_axis_type="log", title="Routing table size (dijkstra vs compact)")
+
+    # add a circle renderer with a size, color, and alpha
+    p.circle(indexes_list, compact_routing_table, size=10, color="navy", alpha=0.5)
+    p.line(indexes_list, dij_size_list, color="red", line_width=3)
+    
+    #show plot
+    show(p)
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+plot_routing_tables(1600)
+
+
+
+
+#Computes all the distances and stores them into a pickle file
 def dij_vs_compact():
     sat_graph, distances_matrix = sat.create_spaceX_graph()
     number_of_nodes = sat_graph.number_of_nodes()
@@ -457,16 +436,16 @@ def dij_vs_compact():
             dij_list.append(dist_dict[node2])
             bound_list.append((2*NUMBER_OF_LEVELS-1)*dist_dict[node2])
 
-    pickle_compact = open('compact_list.pickle', 'ab')
+    pickle_compact = open('compact_list2.pickle', 'wb')
     pickle.dump((direct_list, dij_list, compact_list, bound_list), pickle_compact)
 
-    print(direct_list)
-    print(dij_list)
-    print(compact_list)
-    print(bound_list)
+    #print(direct_list)
+    #print(dij_list)
+    #print(compact_list)
+    #print(bound_list)
 
 def plot_lines():
-    pickle_in = open('compact_list.pickle', "rb")
+    pickle_in = open('compact_list2.pickle', "rb")
     direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
     print(bound_list)
     # Draw point based on above x, y axis values.
@@ -480,14 +459,17 @@ def plot_lines():
     plt.ylabel('Bound - red \n Dijkstra dist - blue \n Compact dist - green')
     plt.show()
 
+#Used to plot a high number of values
 def plot_multiple():
-    pickle_in = open('compact_list.pickle', "rb")
+    pickle_in = open('compact_list2.pickle', "rb")
     direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
 
-    direct_list = direct_list[:1000]
-    dij_list = dij_list[:1000]
-    compact_list = compact_list[:1000]
-    bound_list = bound_list[:1000]
+    #selects the same 10000 distances sample from each list, at random
+    list_rnd = random.sample(range(0, NUMBER_OF_NODES*NUMBER_OF_NODES-1), 10000)
+    direct_list = itemgetter(*list_rnd)(direct_list)
+    dij_list = itemgetter(*list_rnd)(dij_list)
+    compact_list = itemgetter(*list_rnd)(compact_list)
+    bound_list = itemgetter(*list_rnd)(bound_list)
 
     #direct_list = [1, 2, 3, 4, 5]
     #compact_list = [6, 7, 2, 4, 5]
@@ -507,7 +489,7 @@ def plot_multiple():
 
 
 
-plot_multiple()
+
 
 
 
