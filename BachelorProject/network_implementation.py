@@ -397,7 +397,7 @@ def plot_routing_tables(number_of_nodes):
 
     # add a circle renderer with a size, color, and alpha
     p.circle(indexes_list, compact_routing_table, size=10, color="navy", alpha=0.5)
-    p.line(indexes_list, dij_size_list, color="red", line_width=3)
+    p.line(indexes_list, dij_size_list, color="red", line_width=5)
     
     #show plot
     show(p)
