@@ -15,8 +15,9 @@ TCL_FILE_NAME = 'SpaceX_constellation1_1150km.tcl'
 EARTH_RADIUS = 6371
 ALTITUDE = 1150
 MAX_DISTANCE_BETWEEN_SATS = 2*(ALTITUDE+EARTH_RADIUS)
+#TODO : PASS THIS AS FUNCTIONS PARAMETERS (BE CAREFULL TO PUT IT IN THE FUNCTIONS)
 SATELLITES_PER_ORBIT = 50
-NUMBER_OF_ORBITS = 32 #to change into orbit
+NUMBER_OF_ORBITS = 32
 MEAN_MOTION = 7528.14 #this is always constant from a circular orbit for a given altitude
 ECCENTRICITY_ADJUSTMENT = math.pow(10, -20)
 INCLINATION = 53.0
@@ -42,7 +43,7 @@ def constellationFromSaVi():
             spaceX_SaVi.pop(0)
         for i in range (0, DELETE_FROM_END):
             spaceX_SaVi.pop(len(spaceX_SaVi)-1)
-
+        print(len(spaceX_SaVi))
         if len(spaceX_SaVi) != SATELLITES_PER_ORBIT*NUMBER_OF_ORBITS:
             raise Exception('The total number of satellites is not correct')
 
@@ -61,7 +62,7 @@ def constellationFromSaVi():
             to_add_sat._inc = float(SaVi_line[2]) #ok
             to_add_sat._raan = float(SaVi_line[3]) #ok
             to_add_sat._ap = float(SaVi_line[4]) #ok
-            to_add_sat._M = geom.time_to_periapsis_to_mean_anomaly(float(SaVi_line[5]),to_add_sat._n) #should be ok
+            to_add_sat._M = geom.time_to_periapsis_to_mean_anomaly(float(SaVi_line[5]),to_add_sat._n) #ok
             to_add_sat._drag = 0.0
             orbit_i.append(to_add_sat)
         constellation.append(orbit_i)

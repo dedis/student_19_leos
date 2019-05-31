@@ -10,7 +10,6 @@ import pickle
 from bokeh.plotting import figure, output_file, show
 from heapq import heappush, heappop
 from operator import itemgetter
-
 import cProfile
 
 
@@ -99,7 +98,7 @@ def bunches_and_clusters(graph, a_list):
         nodes[node]['cluster'] = {}
 
     for node in nodes:
-        #print(node)
+        print(node)
         last_level_nodes = copy.deepcopy(LAST_LEVEL_NODES)
 
         #used to extract the closest node in heap
@@ -341,6 +340,22 @@ def test_big_graph():
 #-----------------------------------------------------------------------------------------------------------------------
 # True computations happens here
 
+def save_graph():
+    graph, distances_matrix = sat.create_spaceX_graph()
+    pickle_out1 = open('big_graph.pickle', 'wb')
+    pickle.dump(graph, pickle_out1)
+    pickle_out2 = open('distance_big_graph.pickle', 'wb')
+    pickle.dump(distances_matrix, pickle_out2)
+
+def load_graph():
+    pickle_in1 = open('big_graph.pickle', "rb")
+    graph = pickle.load(pickle_in1)
+    pickle_in2 = open('distance_big_graph.pickle', "rb")
+    distances_matrix = pickle.load(pickle_in2)
+    return graph, distances_matrix
+
+
+
 def compact_rd(graph):
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     add_level_to_nodes(graph, a_list)
@@ -354,6 +369,9 @@ def compact_rd(graph):
 
     return distances
 
+def test_load():
+    graph, distance_matrix = load_graph()
+    print(distance_matrix)
 
 
 
@@ -391,7 +409,7 @@ def plot_routing_tables(number_of_nodes):
     print(compact_routing_table)
 
     # output to static HTML file
-    output_file("line.html")
+    output_file("routing_tables.html")
 
     p = figure(plot_width=800, plot_height=800, y_axis_type="log", title="Routing table size (dijkstra vs compact)")
 
@@ -404,7 +422,7 @@ def plot_routing_tables(number_of_nodes):
 
 #-----------------------------------------------------------------------------------------------------------------------
 
-plot_routing_tables(1600)
+#plot_routing_tables(1600)
 
 
 
@@ -444,6 +462,8 @@ def dij_vs_compact():
     #print(compact_list)
     #print(bound_list)
 
+dij_vs_compact()
+
 def plot_lines():
     pickle_in = open('compact_list2.pickle', "rb")
     direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
@@ -465,7 +485,7 @@ def plot_multiple():
     direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
 
     #selects the same 10000 distances sample from each list, at random
-    list_rnd = random.sample(range(0, NUMBER_OF_NODES*NUMBER_OF_NODES-1), 10000)
+    list_rnd = random.sample(range(0, NUMBER_OF_NODES*NUMBER_OF_NODES-1), 1000)
     direct_list = itemgetter(*list_rnd)(direct_list)
     dij_list = itemgetter(*list_rnd)(dij_list)
     compact_list = itemgetter(*list_rnd)(compact_list)
@@ -475,7 +495,7 @@ def plot_multiple():
     #compact_list = [6, 7, 2, 4, 5]
 
     # output to static HTML file
-    output_file("line.html")
+    output_file("plot_multiple.html")
 
     p = figure(plot_width=800, plot_height=800, title="Algorithms depending on the line of sight")
 
@@ -486,6 +506,18 @@ def plot_multiple():
 
     # show the results
     show(p)
+
+#plot_multiple()
+#plot_routing_tables(NUMBER_OF_NODES)
+
+def execution_time_comparison():
+    sat_graph, distances_matrix = sat.create_spaceX_graph()
+    def convert():
+        return dict(nx.all_pairs_dijkstra_path_length(sat_graph))
+    dij_distance = convert()
+    compact_list = compact_rd(sat_graph)
+
+
 
 
 
