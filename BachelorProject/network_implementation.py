@@ -5,7 +5,7 @@ import random
 import sys
 import numpy as np
 import copy
-import LeoSatellites as sat
+import leo_satellites as sat
 import pickle
 from bokeh.plotting import figure, output_file, show
 from heapq import heappush, heappop
@@ -18,7 +18,6 @@ NUMBER_OF_NODES = sat.SATELLITES_PER_ORBIT * sat.NUMBER_OF_ORBITS
 NUMBER_OF_LEVELS = 3
 MAX_DISTANCE_BETWEEN_SATELLITES = sys.float_info.max
 MAX_HOPS = sys.float_info.max
-# todo : see if this would be better sat.MAX_DISTANCE_BETWEEN_SAT
 
 def create_full_mesh(number_of_nodes):
     created_graph = nx.Graph()
@@ -26,7 +25,7 @@ def create_full_mesh(number_of_nodes):
     for i in range (0, number_of_nodes):
         for j in range (0, number_of_nodes):
             if (i != j):
-                random_int = np.random.randint(low = 1, high = 2)
+                #random_int = np.random.randint(low = 1, high = 2)
                 created_graph.add_edge(i, j, weight=1)
     return created_graph
 
@@ -174,18 +173,7 @@ def bunches_and_clusters(graph, a_list):
     return
 
 
-#Creates for each node a cluster on the following form:
-#dictionnary{node_in_cluster: distance_to_node_in_cluster, next_step_to_reach_this_node}
-#TODO : Verify this work or drop clusters
-def clusters_from_bunches(graph):
-    nodes = graph.nodes
-    for node in nodes :
-        nodes[node]['cluster'] = []
-    for node1 in nodes:
-        for node2, value in nodes[node1]['bunch'].items():
-            nodes[node2]['cluster'].append(node1)
-    return
-
+# Gives the distance between two nodes using compact routing
 def dist_u_v(graph, u, v):
     w = u
     next_level = 0
@@ -196,8 +184,9 @@ def dist_u_v(graph, u, v):
 
     return graph.nodes[u]['bunch'][w][0] + graph.nodes[v]['bunch'][w][0]
 
-#TODO : add routing here
-def dist_with_routing(graph, u, v):
+
+# Gives the distance between two nodes using compact routing and the number of hops
+def dist_with_hops(graph, u, v):
 
     w = u
     next_level = 0
@@ -212,7 +201,6 @@ def dist_with_routing(graph, u, v):
     return dist_u_w + dist_v_w, _, hops_u_w + hops_v_w
 
 
-
 # NB : Constructs all the required parameters for the graph EXCEPT CLUSTERS AND ROUTING TABLES
 def initialize(graph):
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
@@ -221,8 +209,7 @@ def initialize(graph):
 
 #-----------------------------------------------------------------------------------------------------------------------
 
-# HERE ARE DIFFERENT BASIC GRAPH FONCTIONS FOR TESTS
-
+# HERE ARE DIFFERENT BASIC GRAPH FUNCTIONS FOR TESTS
 # Node_0---(1)---Node_1----(3)---Node_2-----(6)----Node_3
 def test_path_graph():
     #level == 4
@@ -248,13 +235,7 @@ def test_path_graph():
     for node in links_graph.nodes:
         print(node, ' has cluster', links_graph.nodes[node]['cluster'])
 
-    '''for node1 in links_graph:
-        for node2 in links_graph:
-            print(node1, 'to', node2, dist_with_routing(links_graph, node1, node2))'''
-
-#test_path_graph()
-
-#test_path_graph()
+# Creates a triangle graph
 def test_triangle_graph():
     #level == 3
     triangle_graph = nx.Graph()
@@ -275,7 +256,7 @@ def test_triangle_graph():
         for node2 in triangle_graph.nodes:
             print('node ', node1, ' to node ', node2, ' : ', dist_u_v(triangle_graph, node1, node2))
 
-
+# This was used to compare our bunches with the ones already implemented in Go by Cristina
 def test_rnd_graph():
     triangle_graph = nx.Graph()
     triangle_graph.add_nodes_from([0, 1, 2, 3, 4, 5])
@@ -304,7 +285,7 @@ def test_rnd_graph():
         print(node, ' has next levels ', nodes[node]['next_levels'])
 
 
-#This is a simulation of a small constellation. It has been constructed in LeoSatellites.py
+# This is a simulation of a small constellation. It has been constructed in leo_satellites.py
 def test_small_sat_graph():
     # level == 3
     small_graph, _ = sat.create_small_sat_graph()
@@ -322,7 +303,7 @@ def test_small_sat_graph():
     for node in small_graph:
         print(small_graph.nodes[node]['routing_table'])
 
-
+# This is a test function with the real graph
 def test_big_graph():
     graph, _ = sat.create_spaceX_graph()
     print(graph.number_of_nodes())
@@ -337,9 +318,10 @@ def test_big_graph():
 
 
 
-#-----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------
 # True computations happens here
 
+# Saves the graph into a pickle
 def save_graph():
     graph, distances_matrix = sat.create_spaceX_graph()
     pickle_out1 = open('big_graph.pickle', 'wb')
@@ -347,6 +329,8 @@ def save_graph():
     pickle_out2 = open('distance_big_graph.pickle', 'wb')
     pickle.dump(distances_matrix, pickle_out2)
 
+
+# Loads the graph from a pickle
 def load_graph():
     pickle_in1 = open('big_graph.pickle', "rb")
     graph = pickle.load(pickle_in1)
@@ -354,8 +338,7 @@ def load_graph():
     distances_matrix = pickle.load(pickle_in2)
     return graph, distances_matrix
 
-
-
+#
 def compact_rd(graph):
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     add_level_to_nodes(graph, a_list)
@@ -369,15 +352,61 @@ def compact_rd(graph):
 
     return distances
 
+
 def test_load():
     graph, distance_matrix = load_graph()
     print(distance_matrix)
 
 
+#-----------------------------------------------------------------------------------------------------------------------
+# Computes the difference between the size of routing table of compact routing and the one of dijkstra
+
+def compact_table_size():
+    graph, distances_matrix = sat.create_spaceX_graph()
+    a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
+    add_level_to_nodes(graph, a_list)
+    bunches_and_clusters(graph, a_list)
+    routing_table_sizes = []
+
+    nodes = graph.nodes
+
+    for node in nodes:
+        bunch = set(nodes[node]['bunch'].keys())
+        cluster = set(nodes[node]['cluster'].keys())
+        routing_table_sizes.append(len(bunch.union(cluster)))
+
+
+    return list(nodes), routing_table_sizes
+
+# Plots compact_table_size
+def plot_routing_table_sizes(number_of_nodes):
+    nodes_list, compact_routing_list = compact_table_size()
+    dij_size = number_of_nodes
+    dij_size_list = [dij_size for _ in nodes_list]
+
+    # output to static HTML file
+    output_file("routing_tables_size.html")
+
+    p = figure(plot_width=700, plot_height=700, title="Routing table size (dijkstra vs compact)")
+
+    # add a circle renderer with a size, color, and alpha
+    p.circle(nodes_list, compact_routing_list, size=3, color="blue", alpha=0.5)
+    p.circle(nodes_list, dij_size_list, size=1, color="orange", alpha=0.5)
+
+    # labels
+    p.yaxis.axis_label = "Size of routing tables"
+    p.xaxis.axis_label = "Node number"
+
+    # show plot
+    show(p)
+
+
 
 #-----------------------------------------------------------------------------------------------------------------------
-#computes the difference between the routing table of compact routing and the one of djikstra
-def compact_table_size():
+# Computes the difference between the AVERAGE size of routing table of compact routing and the one of Dijkstra
+
+# Computes the sum of bunches sizes in a graph
+def total_compact_table_size():
     graph, distances_matrix = sat.create_spaceX_graph()
     a_list = create_a_levels(graph, NUMBER_OF_LEVELS)
     add_level_to_nodes(graph, a_list)
@@ -386,48 +415,53 @@ def compact_table_size():
 
     nodes = graph.nodes
     for node in nodes:
-        routing_table_size += len(nodes[node]['bunch']) + len(nodes[node]['cluster'])
+        bunch = set(nodes[node]['bunch'].keys())
+        cluster = set(nodes[node]['cluster'].keys())
+        routing_table_size += len(bunch.union(cluster))
 
     return routing_table_size
 
-def routing_table_comparison():
+# Loops on total_compact_table_size() and stores the result in a pickle file
+def multiple_routing_table_comparison():
     number_of_comparisons = 20
     compact_routing_table = []
     for i in range(0, number_of_comparisons):
-        compact_routing_table.append(compact_table_size())
+        compact_routing_table.append(total_compact_table_size())
 
     pickle_out = open('routing_table_size.pickle', 'wb')
     pickle.dump(compact_routing_table, pickle_out)
 
-def plot_routing_tables(number_of_nodes):
+# Plots a comparison between average size of compact routing tables and those of dijkstra
+def plot_average_routing_tables(number_of_nodes):
     pickle_in = open('routing_table_size.pickle', "rb")
     compact_routing_table = pickle.load(pickle_in)
+    compact_routing_table = [total/number_of_nodes for total in compact_routing_table]
     indexes_list = [i+1 for i, _ in enumerate(compact_routing_table)]
-    dij_size = number_of_nodes*number_of_nodes
-    dij_size_list = [dij_size for _ in indexes_list]
+    dij_size_list = [number_of_nodes for _ in indexes_list]
 
     print(compact_routing_table)
 
     # output to static HTML file
-    output_file("routing_tables.html")
+    output_file("routing_tables_average.html")
 
-    p = figure(plot_width=800, plot_height=800, y_axis_type="log", title="Routing table size (dijkstra vs compact)")
+    p = figure(plot_width=700, plot_height=700,  y_axis_type="log", title="Routing tables average size (mult. runs)")
 
     # add a circle renderer with a size, color, and alpha
-    p.circle(indexes_list, compact_routing_table, size=10, color="navy", alpha=0.5)
-    p.line(indexes_list, dij_size_list, color="red", line_width=5)
+    p.circle(indexes_list, compact_routing_table, size=10, color="blue", alpha=0.5)
+    p.line(indexes_list, dij_size_list, color="orange", line_width=3)
+
+    # labels
+    p.yaxis.axis_label = "Average size of routing tables (log)"
+    p.xaxis.axis_label = "Run number"
     
     #show plot
     show(p)
 
+
 #-----------------------------------------------------------------------------------------------------------------------
 
-#plot_routing_tables(1600)
-
-
-
-
-#Computes all the distances and stores them into a pickle file
+# Computes all the distances using dijkstra, compact_routing, the upper stretch as well as the line of sight and
+# stores them into a pickle file
 def dij_vs_compact():
     sat_graph, distances_matrix = sat.create_spaceX_graph()
     number_of_nodes = sat_graph.number_of_nodes()
@@ -457,17 +491,10 @@ def dij_vs_compact():
     pickle_compact = open('compact_list2.pickle', 'wb')
     pickle.dump((direct_list, dij_list, compact_list, bound_list), pickle_compact)
 
-    #print(direct_list)
-    #print(dij_list)
-    #print(compact_list)
-    #print(bound_list)
-
-dij_vs_compact()
-
+# Plots dij_vs_compact() for a small number of values
 def plot_lines():
     pickle_in = open('compact_list2.pickle', "rb")
     direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
-    print(bound_list)
     # Draw point based on above x, y axis values.
     plt.plot(direct_list, dij_list, 'bs', direct_list, compact_list, 'g^', direct_list, bound_list, 'r--')
 
@@ -479,43 +506,40 @@ def plot_lines():
     plt.ylabel('Bound - red \n Dijkstra dist - blue \n Compact dist - green')
     plt.show()
 
-#Used to plot a high number of values
-def plot_multiple():
+# Plots dij_vs_compact() for a big number of values
+def plot_dij_vs_compact_large():
     pickle_in = open('compact_list2.pickle', "rb")
     direct_list, dij_list, compact_list, bound_list = pickle.load(pickle_in)
 
-    #selects the same 10000 distances sample from each list, at random
+    #selects the same 1000 distances sample from each list, at random
     list_rnd = random.sample(range(0, NUMBER_OF_NODES*NUMBER_OF_NODES-1), 1000)
     direct_list = itemgetter(*list_rnd)(direct_list)
     dij_list = itemgetter(*list_rnd)(dij_list)
     compact_list = itemgetter(*list_rnd)(compact_list)
     bound_list = itemgetter(*list_rnd)(bound_list)
 
-    #direct_list = [1, 2, 3, 4, 5]
-    #compact_list = [6, 7, 2, 4, 5]
-
     # output to static HTML file
-    output_file("plot_multiple.html")
+    output_file("plot_comparison.html")
 
-    p = figure(plot_width=800, plot_height=800, title="Algorithms depending on the line of sight")
+    p = figure(plot_width=700, plot_height=700, title="Algorithms depending on the line of sight")
 
     # add a circle renderer with a size, color, and alpha
-    p.circle(direct_list, dij_list, size=5, color="navy", alpha=0.5)
-    p.circle(direct_list, compact_list, size=5, color="orange", alpha=0.5)
+    p.circle(direct_list, dij_list, size=5, color="orange", alpha=0.5)
+    p.circle(direct_list, compact_list, size=5, color="navy", alpha=0.5)
     p.circle(direct_list, bound_list, size=5, color="red", alpha=0.5)
+
+    # labels
+    p.yaxis.axis_label = "Total Routing Distance (km)"
+    p.xaxis.axis_label = "Line of sight between pairs of satellites (km)"
 
     # show the results
     show(p)
 
-#plot_multiple()
-#plot_routing_tables(NUMBER_OF_NODES)
+plot_routing_table_sizes(NUMBER_OF_NODES)
+plot_average_routing_tables(NUMBER_OF_NODES)
+plot_dij_vs_compact_large()
 
-def execution_time_comparison():
-    sat_graph, distances_matrix = sat.create_spaceX_graph()
-    def convert():
-        return dict(nx.all_pairs_dijkstra_path_length(sat_graph))
-    dij_distance = convert()
-    compact_list = compact_rd(sat_graph)
+
 
 
 
